@@ -4,7 +4,7 @@ vibe coded discord bot for my friend server to celebrate people's birthdays
 Birthdays are "level ups": your level is your age, and the bot keeps everyone ranked on an ASCII bar chart.
 
 ## Features
-- `/birthday set day month year`: anyone can register or change their own birthday.
+- `/birthday set day month year`: anyone can register or change their own birthday. Enter the month as a name (January) or number (1–12); month-name suggestions are available.
 - `/birthday remove`: take yourself off the leaderboard.
 - At midnight Atlanta time (`America/New_York`) on your birthday, the bot pings you with a **LEVEL UP!** message.
   If your birthday is Feb 29, it happens on Feb 28 in non-leap years.

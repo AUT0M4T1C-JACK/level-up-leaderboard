@@ -136,20 +136,30 @@ class LevelUpBot(discord.Client):
 
 class BirthdayCommands(app_commands.Group, name="birthday", description="Register your level-up day", guild_only=True):
     @app_commands.command(name="set", description="Set (or change) your birthday")
-    @app_commands.describe(day="Day of the month", month="Month", year="Year you were born")
-    @app_commands.choices(month=[app_commands.Choice(name=name, value=index + 1) for index, name in enumerate(MONTHS)])
+    @app_commands.describe(day="Day of the month", month="Month name or number (1–12)", year="Year you were born")
     async def set_birthday(
         self,
         interaction: discord.Interaction["LevelUpBot"],
         day: app_commands.Range[int, 1, 31],
-        month: app_commands.Choice[int],
+        month: str,
         year: app_commands.Range[int, 1900, 9999],
     ) -> None:
+        month = month.strip()
+        try:
+            month_number = int(month)
+        except ValueError:
+            month_number = next(
+                (index for index, name in enumerate(MONTHS, 1) if name.casefold() == month.casefold()), 0
+            )
+        if not 1 <= month_number <= 12:
+            await interaction.response.send_message("Enter a month name or a number from 1 to 12.", ephemeral=True)
+            return
+        month_name = MONTHS[month_number - 1]
         today = atlanta_today()
         try:
-            birthdate = date(year, month.value, day)
+            birthdate = date(year, month_number, day)
         except ValueError:
-            await interaction.response.send_message(f"{month.name} {day} isn't a real date in {year}.", ephemeral=True)
+            await interaction.response.send_message(f"{month_name} {day} isn't a real date in {year}.", ephemeral=True)
             return
         if birthdate > today:
             await interaction.response.send_message("You can't be born in the future!", ephemeral=True)
@@ -158,20 +168,31 @@ class BirthdayCommands(app_commands.Group, name="birthday", description="Registe
         bot = interaction.client
         bot.storage.guild(interaction.guild_id)["birthdays"][str(interaction.user.id)] = {
             "day": day,
-            "month": month.value,
+            "month": month_number,
             "year": year,
             "name": interaction.user.display_name,
             # Registering on the day itself shouldn't trigger a surprise ping; reactions still happen.
-            "last_announced": today.isoformat() if is_birthday(month.value, day, today) else None,
+            "last_announced": today.isoformat() if is_birthday(month_number, day, today) else None,
         }
         bot.storage.save()
 
-        level = level_on(day, month.value, year, today)
+        level = level_on(day, month_number, year, today)
         await interaction.response.send_message(
-            f"Saved! You're currently **Level {level}**. Your next level-up is on {month.name} {day}.",
+            f"Saved! You're currently **Level {level}**. Your next level-up is on {month_name} {day}.",
             ephemeral=True,
         )
         await bot.update_leaderboard(interaction.guild)
+
+    @set_birthday.autocomplete("month")
+    async def month_autocomplete(
+        self, interaction: discord.Interaction["LevelUpBot"], current: str
+    ) -> list[app_commands.Choice[str]]:
+        current = current.strip().casefold()
+        return [
+            app_commands.Choice(name=name, value=name)
+            for index, name in enumerate(MONTHS, 1)
+            if name.casefold().startswith(current) or str(index).startswith(current)
+        ]
 
     @app_commands.command(name="remove", description="Remove your birthday from the leaderboard")
     async def remove_birthday(self, interaction: discord.Interaction["LevelUpBot"]) -> None:
