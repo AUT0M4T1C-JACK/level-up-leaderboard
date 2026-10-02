@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import discord
 
-from level_up_leaderboard.bot import LevelUpBot
+from level_up_leaderboard.bot import BirthdayCommands, LevelUpBot, MONTHS
 from level_up_leaderboard.storage import Storage
 
 TODAY = date(2026, 10, 2)
@@ -94,6 +94,80 @@ class BotTests(unittest.IsolatedAsyncioTestCase):
                 message.add_reaction.assert_awaited_once_with("🆙")
             else:
                 message.add_reaction.assert_not_called()
+
+    async def test_set_birthday_accepts_numeric_and_named_months(self):
+        commands = BirthdayCommands()
+        interaction = MagicMock(client=self.bot, guild_id=1, guild=self.guild)
+        interaction.user.id = 30
+        interaction.user.display_name = "New Birthday"
+        interaction.response.send_message = AsyncMock()
+        for month_number, month_name in enumerate(MONTHS, 1):
+            for month in (str(month_number), f"{month_number:02}", month_name, f" {month_name.lower()} "):
+                with self.subTest(month=month), patch.object(self.bot, "update_leaderboard", new_callable=AsyncMock) as update:
+                    await commands.set_birthday.callback(commands, interaction, day=10, month=month, year=2000)
+                    birthday = self.settings["birthdays"]["30"]
+                    self.assertEqual(birthday["month"], month_number)
+                    self.assertEqual(birthday["day"], 10)
+                    self.assertEqual(birthday["year"], 2000)
+                    self.assertEqual(birthday["name"], "New Birthday")
+                    self.assertIsNone(birthday["last_announced"])
+                    self.assertEqual(Storage(self.bot.storage.path).guild(1)["birthdays"]["30"], birthday)
+                    self.assertIn(f"{month_name} 10.", interaction.response.send_message.call_args.args[0])
+                    self.assertTrue(interaction.response.send_message.call_args.kwargs["ephemeral"])
+                    update.assert_awaited_once_with(self.guild)
+
+    async def test_set_birthday_rejects_invalid_months_and_dates(self):
+        commands = BirthdayCommands()
+        interaction = MagicMock(client=self.bot, guild_id=1, guild=self.guild)
+        interaction.user.id = 10
+        interaction.response.send_message = AsyncMock()
+        original = self.settings["birthdays"]["10"].copy()
+        cases = [
+            (10, month, 2000, "Enter a month name or a number from 1 to 12.")
+            for month in ("0", "13", "-1", "1.5", "", "NotAMonth", "9" * 5000)
+        ] + [
+            (31, month, 2000, "April 31 isn't a real date in 2000.") for month in ("4", "April")
+        ] + [
+            (29, month, 2001, "February 29 isn't a real date in 2001.") for month in ("2", "February")
+        ] + [
+            (3, month, 2026, "You can't be born in the future!") for month in ("10", "October")
+        ]
+        for day, month, year, error in cases:
+            with self.subTest(day=day, month=month, year=year), \
+                    patch.object(self.bot.storage, "save") as save, \
+                    patch.object(self.bot, "update_leaderboard", new_callable=AsyncMock) as update:
+                interaction.response.send_message.reset_mock()
+                await commands.set_birthday.callback(commands, interaction, day=day, month=month, year=year)
+                interaction.response.send_message.assert_awaited_once_with(error, ephemeral=True)
+                self.assertEqual(self.settings["birthdays"]["10"], original)
+                save.assert_not_called()
+                update.assert_not_awaited()
+
+    async def test_set_birthday_accepts_leap_day_and_today(self):
+        commands = BirthdayCommands()
+        interaction = MagicMock(client=self.bot, guild_id=1, guild=self.guild)
+        interaction.user.id = 30
+        interaction.user.display_name = "New Birthday"
+        interaction.response.send_message = AsyncMock()
+        for day, month, year, announced in (
+            (29, "2", 2000, None), (29, "February", 2000, None),
+            (2, "10", 2026, TODAY.isoformat()), (2, "October", 2026, TODAY.isoformat()),
+        ):
+            with self.subTest(month=month), patch.object(self.bot, "update_leaderboard", new_callable=AsyncMock):
+                await commands.set_birthday.callback(commands, interaction, day=day, month=month, year=year)
+                self.assertEqual(self.settings["birthdays"]["30"]["last_announced"], announced)
+
+    async def test_month_autocomplete_supports_names_and_numbers(self):
+        commands = BirthdayCommands()
+        for current, expected in (("", MONTHS), (" ja ", ["January"]), ("2", ["February"]), ("12", ["December"])):
+            with self.subTest(current=current):
+                choices = await commands.month_autocomplete(MagicMock(), current)
+                self.assertEqual([choice.name for choice in choices], expected)
+                self.assertEqual([choice.value for choice in choices], expected)
+        month = next(parameter for parameter in commands.set_birthday.parameters if parameter.name == "month")
+        self.assertEqual(month.type, discord.AppCommandOptionType.string)
+        self.assertTrue(month.autocomplete)
+        self.assertEqual(month.choices, [])
 
 
 if __name__ == "__main__":
