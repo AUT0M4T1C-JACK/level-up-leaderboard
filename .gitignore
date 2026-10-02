@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Level Up Leaderboard bot data
+data.json
+data.json.tmp
