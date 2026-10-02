@@ -2,8 +2,12 @@ import logging
 import os
 import sys
 
+from dotenv import load_dotenv
+
 from .bot import LevelUpBot
 from .storage import Storage
+
+load_dotenv(".env")
 
 token = os.environ.get("DISCORD_TOKEN")
 if not token:
