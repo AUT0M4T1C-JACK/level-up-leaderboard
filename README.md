@@ -34,6 +34,9 @@ Birthdays are "level ups": your level is your age, and the bot keeps everyone ra
    pip install -r requirements.txt
    DISCORD_TOKEN=your-token-here python -m level_up_leaderboard
    ```
+   Alternatively, put `DISCORD_TOKEN=your-token-here` in a `.env` file in the working directory
+   (usually the repository root) and run `python -m level_up_leaderboard`.
+   Exported environment variables take precedence over `.env` values. Keep your `.env` file private; it is git-ignored.
    Birthdays and settings are saved to `data.json`. Set `DATA_FILE` to store them somewhere else.
 4. In your server, run `/levelup leaderboard-channel` to post the leaderboard. Then have everyone run `/birthday set`.
 
