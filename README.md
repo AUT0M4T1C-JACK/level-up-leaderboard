@@ -14,8 +14,8 @@ Birthdays are "level ups": your level is your age, and the bot keeps everyone ra
   LEVEL UP LEADERBOARD
   ====================
 
-  1. Sam              Lv 31 |##############################
-  2. Jack             Lv 29 |############################
+  1. Sam              Lv 31 |###############################
+  2. Jack             Lv 29 |#############################
   3. Mo               Lv  8 |########
   ```
 
