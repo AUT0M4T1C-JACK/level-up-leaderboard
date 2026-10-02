@@ -9,7 +9,6 @@ from zoneinfo import ZoneInfo
 
 ATLANTA_TZ = ZoneInfo("America/New_York")
 
-BAR_WIDTH = 30
 NAME_WIDTH = 16
 # Discord messages are capped at 2000 characters; stay well under it.
 MAX_LEADERBOARD_CHARS = 1900
@@ -53,7 +52,7 @@ def render_leaderboard(entries: list[tuple[str, int, date]]) -> str:
         # Backticks would break out of the code block.
         name = name.replace("`", "'")
         short_name = name if len(name) <= NAME_WIDTH else name[: NAME_WIDTH - 1] + "~"
-        bar = "#" * max(round(level / max_level * BAR_WIDTH), 1 if level > 0 else 0)
+        bar = "#" * max(level, 0)
         line = f"{index + 1:>{rank_width}}. {short_name:<{NAME_WIDTH}} Lv {level:>{level_width}} |{bar}"
         # Always keep room for the "... and N more" line.
         if used + len(line) + 1 > MAX_LEADERBOARD_CHARS - 30:

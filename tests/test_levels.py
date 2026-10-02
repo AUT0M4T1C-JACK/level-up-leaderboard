@@ -46,8 +46,13 @@ class LeaderboardTests(unittest.TestCase):
         self.assertTrue(board.startswith("```") and board.endswith("```"))
         ranked = [line for line in lines if "Lv" in line]
         self.assertEqual([line.split()[1] for line in ranked], ["old", "twin-a", "twin-b", "young"])
-        self.assertTrue(ranked[0].endswith("|" + "#" * 30))
-        self.assertTrue(ranked[3].endswith("|" + "#" * 15))
+        self.assertTrue(ranked[0].endswith("|" + "#" * 40))
+        self.assertTrue(ranked[3].endswith("|" + "#" * 20))
+
+    def test_bar_has_one_hashtag_per_level(self):
+        board = render_leaderboard([("user", 22, date(2004, 1, 1))])
+        ranked = [line for line in board.splitlines() if "Lv" in line]
+        self.assertTrue(ranked[0].endswith("|" + "#" * 22))
 
     def test_empty_board(self):
         self.assertIn("No one has registered yet", render_leaderboard([]))
