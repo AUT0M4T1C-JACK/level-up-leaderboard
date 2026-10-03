@@ -5,7 +5,7 @@ Birthdays are "level ups": your level is your age, and the bot keeps everyone ra
 
 ## Features
 - `/birthday set day month year`: anyone can register or change their own birthday. Enter the month as a name (January) or number (1–12); month-name suggestions are available.
-- `/birthday remove`: take yourself off the leaderboard.
+- `/birthday remove [member]`: take yourself off the leaderboard; only `@AUT0M4T1C_JACK` can remove another member.
 - At midnight Atlanta time (`America/New_York`) on your birthday, the bot pings you with a **LEVEL UP!** message.
   If your birthday is Feb 29, it happens on Feb 28 in non-leap years.
 - On your birthday, the bot reacts to every message you send with the configured emoji (default 🎂).

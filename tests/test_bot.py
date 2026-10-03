@@ -157,6 +157,65 @@ class BotTests(unittest.IsolatedAsyncioTestCase):
                 await commands.set_birthday.callback(commands, interaction, day=day, month=month, year=year)
                 self.assertEqual(self.settings["birthdays"]["30"]["last_announced"], announced)
 
+    async def test_remove_birthday_only_owner_can_remove_another_member(self):
+        commands = BirthdayCommands()
+        interaction = MagicMock(client=self.bot, guild_id=1, guild=self.guild)
+        interaction.user.id = 10
+        interaction.user.name = "someone_else"
+        interaction.response.send_message = AsyncMock()
+        member = MagicMock(id=20, display_name="Tomorrow", mention="<@20>")
+
+        with patch.object(self.bot.storage, "save") as save, \
+                patch.object(self.bot, "update_leaderboard", new_callable=AsyncMock) as update:
+            await commands.remove_birthday.callback(commands, interaction, member)
+
+        self.assertIn("20", self.settings["birthdays"])
+        self.assertEqual(self.settings["birthdays"]["10"]["name"], "Birthday")
+        save.assert_not_called()
+        update.assert_not_awaited()
+        interaction.response.send_message.assert_awaited_once_with(
+            "Only the leaderboard owner can remove someone else's birthday.", ephemeral=True
+        )
+
+    async def test_owner_can_remove_another_member_birthday(self):
+        commands = BirthdayCommands()
+        interaction = MagicMock(client=self.bot, guild_id=1, guild=self.guild)
+        interaction.user.id = 10
+        interaction.user.name = "AUT0M4T1C_JACK"
+        interaction.response.send_message = AsyncMock()
+        member = MagicMock(id=20, display_name="Tomorrow", mention="<@20>")
+
+        with patch.object(self.bot.storage, "save") as save, \
+                patch.object(self.bot, "update_leaderboard", new_callable=AsyncMock) as update:
+            await commands.remove_birthday.callback(commands, interaction, member)
+
+        self.assertNotIn("20", self.settings["birthdays"])
+        self.assertIn("10", self.settings["birthdays"])
+        save.assert_called_once()
+        update.assert_awaited_once_with(self.guild)
+        interaction.response.send_message.assert_awaited_once_with(
+            "Removed <@20> from the leaderboard.", ephemeral=True
+        )
+
+    async def test_member_can_still_remove_own_birthday(self):
+        commands = BirthdayCommands()
+        interaction = MagicMock(client=self.bot, guild_id=1, guild=self.guild)
+        interaction.user.id = 10
+        interaction.user.name = "someone_else"
+        interaction.response.send_message = AsyncMock()
+
+        with patch.object(self.bot.storage, "save") as save, \
+                patch.object(self.bot, "update_leaderboard", new_callable=AsyncMock) as update:
+            await commands.remove_birthday.callback(commands, interaction)
+
+        self.assertNotIn("10", self.settings["birthdays"])
+        self.assertIn("20", self.settings["birthdays"])
+        save.assert_called_once()
+        update.assert_awaited_once_with(self.guild)
+        interaction.response.send_message.assert_awaited_once_with(
+            "Removed you from the leaderboard.", ephemeral=True
+        )
+
     async def test_month_autocomplete_supports_names_and_numbers(self):
         commands = BirthdayCommands()
         for current, expected in (("", MONTHS), (" ja ", ["January"]), ("2", ["February"]), ("12", ["December"])):

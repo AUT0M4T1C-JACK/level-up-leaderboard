@@ -16,6 +16,7 @@ MONTHS = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
 ]
+OWNER_USERNAME = "AUT0M4T1C_JACK"
 
 
 class LevelUpBot(discord.Client):
@@ -195,13 +196,25 @@ class BirthdayCommands(app_commands.Group, name="birthday", description="Registe
         ]
 
     @app_commands.command(name="remove", description="Remove your birthday from the leaderboard")
-    async def remove_birthday(self, interaction: discord.Interaction["LevelUpBot"]) -> None:
+    @app_commands.describe(member="Member to remove (only the leaderboard owner can remove others)")
+    async def remove_birthday(
+        self, interaction: discord.Interaction["LevelUpBot"], member: discord.Member | None = None
+    ) -> None:
         bot = interaction.client
-        if bot.storage.guild(interaction.guild_id)["birthdays"].pop(str(interaction.user.id), None) is None:
-            await interaction.response.send_message("You don't have a birthday set.", ephemeral=True)
+        target = member or interaction.user
+        is_self = target.id == interaction.user.id
+        if not is_self and interaction.user.name.casefold() != OWNER_USERNAME.casefold():
+            await interaction.response.send_message(
+                "Only the leaderboard owner can remove someone else's birthday.", ephemeral=True
+            )
+            return
+        if bot.storage.guild(interaction.guild_id)["birthdays"].pop(str(target.id), None) is None:
+            message = "You don't have a birthday set." if is_self else f"{target.display_name} doesn't have a birthday set."
+            await interaction.response.send_message(message, ephemeral=True)
             return
         bot.storage.save()
-        await interaction.response.send_message("Removed you from the leaderboard.", ephemeral=True)
+        message = "Removed you from the leaderboard." if is_self else f"Removed {target.mention} from the leaderboard."
+        await interaction.response.send_message(message, ephemeral=True)
         await bot.update_leaderboard(interaction.guild)
 
 
